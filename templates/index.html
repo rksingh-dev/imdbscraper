@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 IMDb Review Analyzer with AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background container */
+        #animated-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        #animated-background > div {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100vw;
+            height: 100vh;
+            min-width: 1440px;
+            min-height: 900px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            animation: fadeIn 1s ease-in;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .search-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+            animation: slideUp 0.8s ease-out;
+            position: relative;
+            z-index: 2;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 18px 25px;
+            font-size: 1.1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-btn {
+            padding: 18px 40px;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-btn:active {
+            transform: translateY(0);
+        }
+
+        .search-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loader.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .movie-info {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 2;
+        }
+
+        .movie-title {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .rating-badge {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: auto;
+        }
+
+        .movie-meta {
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .movie-meta a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .movie-meta a:hover {
+            text-decoration: underline;
+        }
+
+        .ai-summary {
+            background: linear-gradient(135deg, rgba(255, 236, 210, 0.95) 0%, rgba(252, 182, 159, 0.95) 100%);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 2;
+        }
+
+        .ai-summary h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        .ai-content {
+            color: #444;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            font-size: 1.05rem;
+        }
+
+        .reviews-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 2;
+        }
+
+        .reviews-section h2 {
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+        }
+
+        .review-item {
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+
+        .review-item:hover {
+            transform: translateX(5px);
+        }
+
+        .review-rating {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .review-text {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .error {
+            background: #ff4444;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+            animation: shake 0.5s;
+        }
+
+        .search-results {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 2;
+        }
+
+        .search-results.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .search-results h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .result-item {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .result-item:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .result-poster {
+            width: 80px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            flex-shrink: 0;
+        }
+
+        .result-info {
+            flex: 1;
+        }
+
+        .result-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .result-meta {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .result-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .search-form {
+                flex-direction: column;
+            }
+
+            .search-btn {
+                width: 100%;
+            }
+
+            .movie-title {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .rating-badge {
+                margin-left: 0;
+                margin-top: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div id="animated-background">
+        <div data-us-project="Ar4sdilkWc3DUq6SGnAd" style="width:100%; height:100%"></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🎬 IMDb Review Analyzer</h1>
+            <p>Powered by AI • Get instant movie recommendations</p>
+        </div>
+
+        <div class="search-card">
+            <form id="searchForm" class="search-form">
+                <input 
+                    type="text" 
+                    id="movieInput" 
+                    class="search-input" 
+                    placeholder="Enter movie or web series name (e.g., Inception, Breaking Bad)..."
+                    required
+                >
+                <button type="submit" class="search-btn" id="searchBtn">
+                    🔍 Analyze
+                </button>
+            </form>
+        </div>
+
+        <div class="error" id="errorMsg"></div>
+
+        <div class="search-results" id="searchResults">
+            <h2>🎯 Search Results - Please Select:</h2>
+            <div id="searchResultsList"></div>
+        </div>
+
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p style="color: white; font-size: 1.2rem;">🤖 Analyzing reviews with AI...</p>
+            <p style="color: white; opacity: 0.8; margin-top: 10px;">This may take 15-30 seconds</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="movie-info">
+                <div class="movie-title">
+                    <span id="movieTitle"></span>
+                    <span class="rating-badge" id="aiRating"></span>
+                </div>
+                <div class="movie-meta">
+                    <strong>IMDb ID:</strong> <span id="imdbId"></span> | 
+                    <strong>Reviews Analyzed:</strong> <span id="totalReviews"></span> |
+                    <a id="imdbLink" href="#" target="_blank">View on IMDb</a>
+                </div>
+            </div>
+
+            <div class="ai-summary">
+                <h2>✨ AI Analysis Summary</h2>
+                <div class="ai-content" id="aiSummary"></div>
+            </div>
+
+            <div class="reviews-section">
+                <h2>📝 Sample Reviews (First 10)</h2>
+                <div id="reviewsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const searchForm = document.getElementById('searchForm');
+        const movieInput = document.getElementById('movieInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const loader = document.getElementById('loader');
+        const results = document.getElementById('results');
+        const errorMsg = document.getElementById('errorMsg');
+        const searchResults = document.getElementById('searchResults');
+        const searchResultsList = document.getElementById('searchResultsList');
+
+        let currentMovieName = '';
+
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const movieName = movieInput.value.trim();
+            if (!movieName) return;
+
+            currentMovieName = movieName;
+
+            // Show loader, hide results and errors
+            loader.classList.add('active');
+            results.classList.remove('active');
+            errorMsg.classList.remove('active');
+            searchResults.classList.remove('active');
+            searchBtn.disabled = true;
+            searchBtn.textContent = '🔍 Searching...';
+
+            try {
+                const formData = new FormData();
+                formData.append('movie_name', movieName);
+
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || 'An error occurred');
+                }
+
+                // If only one result or user wants first result, analyze directly
+                if (data.results.length === 1) {
+                    analyzeMovie(movieName, data.results[0].imdb_id);
+                } else {
+                    // Show multiple results for user selection
+                    displaySearchResults(data.results);
+                    loader.classList.remove('active');
+                }
+                
+            } catch (error) {
+                showError(error.message);
+                loader.classList.remove('active');
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = '🔍 Analyze';
+            }
+        });
+
+        function displaySearchResults(resultsData) {
+            searchResultsList.innerHTML = '';
+            
+            resultsData.forEach((result, index) => {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'result-item';
+                resultDiv.onclick = () => {
+                    searchResults.classList.remove('active');
+                    analyzeMovie(result.title, result.imdb_id);
+                };
+                
+                // Poster image
+                const posterImg = document.createElement('img');
+                posterImg.className = 'result-poster';
+                posterImg.src = result.poster || 'https://via.placeholder.com/80x120/667eea/ffffff?text=No+Poster';
+                posterImg.alt = result.title;
+                posterImg.onerror = function() {
+                    this.src = 'https://via.placeholder.com/80x120/667eea/ffffff?text=No+Poster';
+                };
+                
+                // Info div
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'result-info';
+                infoDiv.innerHTML = `
+                    <div class="result-title">${result.title}</div>
+                    <div class="result-meta">
+                        ${result.year ? `${result.year}` : ''} 
+                        ${result.type ? `• ${result.type}` : ''}
+                        ${result.imdb_id ? `• ${result.imdb_id}` : ''}
+                    </div>
+                `;
+                
+                // Badge
+                const badge = document.createElement('div');
+                badge.className = 'result-badge';
+                badge.textContent = 'Analyze →';
+                
+                resultDiv.appendChild(posterImg);
+                resultDiv.appendChild(infoDiv);
+                resultDiv.appendChild(badge);
+                searchResultsList.appendChild(resultDiv);
+            });
+
+            searchResults.classList.add('active');
+            
+            // Scroll to results
+            setTimeout(() => {
+                searchResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        async function analyzeMovie(movieName, imdbId) {
+            loader.classList.add('active');
+            searchBtn.disabled = true;
+            searchBtn.textContent = '⏳ Analyzing...';
+
+            try {
+                const formData = new FormData();
+                formData.append('movie_name', movieName);
+                formData.append('imdb_id', imdbId);
+
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || 'An error occurred');
+                }
+
+                // Display results
+                displayResults(data);
+                
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                loader.classList.remove('active');
+                searchBtn.disabled = false;
+                searchBtn.textContent = '🔍 Analyze';
+            }
+        }
+
+        function displayResults(data) {
+            // Movie info
+            document.getElementById('movieTitle').textContent = data.movie_name;
+            document.getElementById('aiRating').textContent = `${data.ai_rating}/100`;
+            document.getElementById('imdbId').textContent = data.imdb_id;
+            document.getElementById('totalReviews').textContent = data.total_reviews;
+            document.getElementById('imdbLink').href = data.reviews_url;
+
+            // AI Summary
+            document.getElementById('aiSummary').textContent = data.ai_summary;
+
+            // Reviews
+            const reviewsList = document.getElementById('reviewsList');
+            reviewsList.innerHTML = '';
+            
+            data.reviews.forEach((review, index) => {
+                const reviewDiv = document.createElement('div');
+                reviewDiv.className = 'review-item';
+                reviewDiv.innerHTML = `
+                    <div class="review-rating">⭐ Rating: ${review.rating}</div>
+                    <div class="review-text">${review.text}...</div>
+                `;
+                reviewsList.appendChild(reviewDiv);
+            });
+
+            results.classList.add('active');
+            
+            // Scroll to results
+            setTimeout(() => {
+                results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+
+        function showError(message) {
+            errorMsg.textContent = `❌ Error: ${message}`;
+            errorMsg.classList.add('active');
+            
+            setTimeout(() => {
+                errorMsg.classList.remove('active');
+            }, 5000);
+        }
+    </script>
+
+    <!-- UnicornStudio Animation Script -->
+    <script type="text/javascript">
+        !function(){
+            if(!window.UnicornStudio){
+                window.UnicornStudio={isInitialized:!1};
+                var i=document.createElement("script");
+                i.src="https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v1.4.32/dist/unicornStudio.umd.js",
+                i.onload=function(){
+                    window.UnicornStudio.isInitialized||(UnicornStudio.init(),window.UnicornStudio.isInitialized=!0)
+                },
+                (document.head || document.body).appendChild(i)
+            }
+        }();
+    </script>
+</body>
+</html>
